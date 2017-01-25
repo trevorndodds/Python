@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 import datetime
 import time
-import urllib
 import json
-import urllib2
+import requests
 import os
 import sys
 
@@ -20,8 +19,8 @@ def fetch_clusterhealth():
     utc_datetime = datetime.datetime.utcnow()
     endpoint = "/_cluster/health"
     urlData = elasticServer + endpoint
-    response = urllib.urlopen(urlData)
-    jsonData = json.loads(response.read())
+    response = requests.get(urlData)
+    jsonData = response.json()
     clusterName = jsonData['cluster_name']
     jsonData['@timestamp'] = str(utc_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
     post_data(jsonData)
@@ -32,8 +31,8 @@ def fetch_clusterstats():
     utc_datetime = datetime.datetime.utcnow()
     endpoint = "/_cluster/stats"
     urlData = elasticServer + endpoint
-    response = urllib.urlopen(urlData)
-    jsonData = json.loads(response.read())
+    response = requests.get(urlData)
+    jsonData = response.json()
     jsonData['@timestamp'] = str(utc_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
     post_data(jsonData)
 
@@ -42,13 +41,13 @@ def fetch_nodestats(clusterName):
     utc_datetime = datetime.datetime.utcnow()
     endpoint = "/_cat/nodes?v&h=n"
     urlData = elasticServer + endpoint
-    response = urllib.urlopen(urlData)
-    nodes = response.read()[1:-1].strip().split('\n')
+    response = requests.get(urlData)
+    nodes = response.content[1:-1].strip().split('\n')
     for node in nodes:
         endpoint = "/_nodes/%s/stats" % node.rstrip()
         urlData = elasticServer + endpoint
-        response = urllib.urlopen(urlData)
-        jsonData = json.loads(response.read())
+        response = requests.get(urlData)
+        jsonData = response.json()
         nodeID = jsonData['nodes'].keys()
         jsonData['nodes'][nodeID[0]]['@timestamp'] = str(utc_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
         jsonData['nodes'][nodeID[0]]['cluster_name'] = clusterName
@@ -60,8 +59,8 @@ def fetch_indexstats(clusterName):
     utc_datetime = datetime.datetime.utcnow()
     endpoint = "/_stats"
     urlData = elasticServer + endpoint
-    response = urllib.urlopen(urlData)
-    jsonData = json.loads(response.read())
+    response = requests.get(urlData)
+    jsonData = response.json()
     jsonData['_all']['@timestamp'] = str(utc_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
     jsonData['_all']['cluster_name'] = clusterName
     post_data(jsonData['_all'])
@@ -77,8 +76,9 @@ def post_data(data):
     url = "%(cluster)s/%(index)s-%(index_period)s/message" % url_parameters
     headers = {'content-type': 'application/json'}
     try:
-        req = urllib2.Request(url, headers=headers, data=json.dumps(data))
-        f = urllib2.urlopen(req)
+        req = requests.post(url, headers=headers, data=json.dumps(data))
+        if req.status_code != 201:
+            print "unable to post data, http code {}, error string: {}".format(req.status_code, req.text)
     except Exception as e:
         print "Error:  {}".format(str(e))
 
