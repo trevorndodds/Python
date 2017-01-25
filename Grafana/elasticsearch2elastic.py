@@ -77,7 +77,7 @@ def post_data(data):
     headers = {'content-type': 'application/json'}
     try:
         req = requests.post(url, headers=headers, data=json.dumps(data))
-        if req.status_code != 200:
+        if req.status_code != 201:
             print "unable to post data, http code {}, error string: {}".format(req.status_code, req.text)
     except Exception as e:
         print "Error:  {}".format(str(e))
