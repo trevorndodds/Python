@@ -16,9 +16,9 @@ elasticIndex = os.environ.get('ES_METRICS_INDEX_NAME', 'elasticsearch_metrics')
 elasticMonitoringCluster = os.environ.get('ES_METRICS_MONITORING_CLUSTER_URL', 'http://server2:9200')
 
 # Enable Elasticsearch Security
-es_security_enable = True
-username = "elastic"
-password = "xRoCwe7LRjhtploQelne"
+es_security_enable = False
+username = "username"
+password = "password"
 
 def handle_urlopen(urlData):
     if es_security_enable: 
@@ -31,7 +31,7 @@ def handle_urlopen(urlData):
 		return response
     else:
         response = urllib.urlopen(urlData)
-		return response		
+		return response
 
 def fetch_clusterhealth():
     try:
@@ -106,7 +106,15 @@ def post_data(data):
     headers = {'content-type': 'application/json'}
     try:
         req = urllib2.Request(url, headers=headers, data=json.dumps(data))
-        f = handle_urlopen(req)
+        if es_security_enable:
+            password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+            password_mgr.add_password(None, url, username, password)
+            handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+            opener = urllib2.build_opener(handler)
+            urllib2.install_opener(opener)
+            response = urllib2.urlopen(req)
+        else:
+            response = urllib2.urlopen(req)
     except Exception as e:
         print "Error:  {}".format(str(e))
 
